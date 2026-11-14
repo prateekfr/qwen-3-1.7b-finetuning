@@ -5,6 +5,8 @@ data/processed/
 # Checkpoints & Logs
 checkpoints/
 logs/
+weights/
+reference_repo/
 
 # Python
 __pycache__/

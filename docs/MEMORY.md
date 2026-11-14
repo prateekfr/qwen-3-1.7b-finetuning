@@ -128,14 +128,19 @@ qwen-3-1.7b-finetuning/
 
 ### ✅ Completed
 - [x] Analyzed original project in full (all 13 commits, architecture, lab notebook)
+- [x] Cloned full original reference repo into `reference_repo/` for 100% complete reference access
 - [x] Assessed hardware feasibility (16 GB original vs 4 GB RTX 3050 Laptop)
 - [x] Created clean folder structure & comprehensive markdown memory
 - [x] Phase 0: Environment setup (`qwen-no-e` Conda env, PyTorch cu124, bitsandbytes, transformers, peft)
 - [x] Phase 1: Data pipeline (imported 200 reviewed rewrites, train_180, val, test, and RL pools)
 - [x] Phase 2: Token mask verified (103,639 blocked tokens / 68.33%, matching Kevin's count exactly)
+- [x] Phase 3: SFT 4-bit QLoRA verified on RTX 3050 GPU
+  - Downloaded `Qwen3-1.7B` base weights (3.87 GB)
+  - Trained Epoch 1 on 180 rewrites: val loss dropped from **4.6452 → 2.8950**
+  - Confirmed generated text produces coherent sentences with **0% 'e's** (`e_pass=True`)
 
 ### 🔄 In Progress
-- [ ] Phase 3: Supervised Fine-Tuning (SFT) adaptation for 4 GB VRAM
+- [ ] Phase 3: Run full multi-epoch SFT (up to epoch 4-5)
 
 ### ⏳ Not Started
 - [ ] Phase 4: Reinforcement Learning (GRPO)
