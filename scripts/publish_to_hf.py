@@ -106,6 +106,20 @@ with torch.no_grad():
 print(tokenizer.decode(curr_ids[0][inputs["input_ids"].shape[1]:], skip_special_tokens=True).strip())
 ```
 
+## GGUF & Ollama Deployment
+
+A pre-converted GGUF FP16 binary (`qwen3-1.7b-no-e-f16.gguf`) is available in this repository for local CPU/GPU inference via llama.cpp or Ollama.
+
+### Run in Ollama:
+```bash
+# 1. Download the GGUF binary
+huggingface-cli download {repo_id} qwen3-1.7b-no-e-f16.gguf --local-dir .
+
+# 2. Create Ollama model from Modelfile
+ollama create qwen3-no-e -f Modelfile
+ollama run qwen3-no-e
+```
+
 ## Citation & Attribution
 - **Author & Post-Training Engineer:** Prateek
 - **Base Architecture:** Qwen3-1.7B by the Qwen Team / Alibaba Cloud
@@ -194,6 +208,20 @@ with torch.no_grad():
         curr_ids = torch.cat([curr_ids, next_token], dim=-1)
 
 print(tokenizer.decode(curr_ids[0][inputs["input_ids"].shape[1]:], skip_special_tokens=True).strip())
+```
+
+## GGUF & Ollama Deployment
+
+A pre-converted GGUF FP16 binary (`qwen3-1.7b-no-e-f16.gguf`) is available in this repository for local CPU/GPU inference via llama.cpp or Ollama.
+
+### Run in Ollama:
+```bash
+# 1. Download the GGUF binary
+huggingface-cli download {repo_id} qwen3-1.7b-no-e-f16.gguf --local-dir .
+
+# 2. Create Ollama model from Modelfile
+ollama create qwen3-no-e -f Modelfile
+ollama run qwen3-no-e
 ```
 
 ## Citation & Attribution
