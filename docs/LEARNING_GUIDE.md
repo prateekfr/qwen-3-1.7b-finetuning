@@ -20,7 +20,11 @@
    - [Gradient Checkpointing (Activation Recomputation)](#gradient-checkpointing)
 7. [Inference Mechanics: Logits, Sampling & Token Masking](#7-inference-mechanics)
 8. [Reinforcement Learning & Alignment: GRPO vs. PPO](#8-reinforcement-learning--grpo)
-9. [Key Terms Quick Reference Glossary](#9-glossary)
+10. [Loss Dynamics & Perplexity Math](#10-loss-dynamics--perplexity)
+11. [The Information-Theoretic Entropy Floor of Constrained Tasks](#11-entropy-floor)
+12. [Overfitting, Generalization & Early Stopping on Small Datasets](#12-overfitting--generalization)
+13. [Hardware & Thermal Systems Engineering](#13-thermal-systems-engineering)
+14. [Key Terms Quick Reference Glossary](#14-glossary)
 
 ---
 
@@ -252,7 +256,80 @@ Under an unforgiving constraint (no letter "e"), every extra token is a risk of 
 
 ---
 
-## 9. Key Terms Glossary
+## 10. Loss Dynamics & Perplexity Math
+
+### Connecting Cross-Entropy to Real-World Probability
+When training an LLM, developers often track loss numbers like `3.10` or `2.56` without realizing what they mean in terms of model confidence.
+The loss function is:
+$$\mathcal{L} = -\log P(\text{target token})$$
+
+Solving for $P(\text{target token})$:
+$$P(\text{target token}) = e^{-\mathcal{L}}$$
+
+And the **Perplexity ($\text{PPL}$)** is:
+$$\text{PPL} = e^{\mathcal{L}}$$
+Perplexity represents the *effective number of equally likely tokens* the model is choosing among at every step.
+
+Let's look at the numbers from our actual training run:
+
+| Stage | Cross-Entropy Loss ($\mathcal{L}$) | Target Token Probability ($e^{-\mathcal{L}}$) | Effective Choices ($\text{PPL} = e^{\mathcal{L}}$) | Intuitive Behavior |
+|---|---|---|---|---|
+| **Base Untrained (Step 0)** | **4.6452** | $0.0096$ (~0.96%) | **104.1 tokens** | Blind guessing among ~104 options; outputs complete gibberish under mask. |
+| **Epoch 1** | **2.8950** | $0.0553$ (~5.5%) | **18.08 tokens** | Model begins steering toward e-free nouns and verbs; uncertainty drops by 83%! |
+| **Epoch 2** | **2.6372** | $0.0715$ (~7.2%) | **13.97 tokens** | Sentence structures stabilize; uses synonyms ("hound", "canine") naturally. |
+| **Epoch 3** | **2.5692** | $0.0766$ (~7.7%) | **13.06 tokens** | Coherent, fluent lipogram generation with zero forbidden letters. |
+| **User's Target** | **~1.5000** | $0.2231$ (~22.3%) | **4.48 tokens** | Extremely high confidence in exact next token on every step. |
+
+---
+
+## 11. The Information-Theoretic Entropy Floor of Constrained Tasks
+
+### Why Doesn't Val Loss Drop to 0.5?
+In standard LLM training (e.g. natural English chat, code generation), loss can often drop to 1.2 – 1.8. Why does a lipogram model encounter an "entropy floor" around 2.2 – 2.5?
+
+1. **Vocabulary Density Distribution:**
+   - In standard English, the letter "e" appears in **~12.7% of all letters** and in ~68% of vocabulary tokens.
+   - Core function words — `"the"`, `"be"`, `"are"`, `"were"`, `"he"`, `"she"`, `"they"`, `"there"`, `"where"`, `"when"`, `"before"`, `"after"`, `"between"` — all contain the letter "e".
+2. **Lower Ground-Truth Frequency:**
+   - In our 180 rewrite targets, sentences must use less frequent words to avoid "e" (e.g., *"A hound runs with vigor in a grassy park"* instead of *"The dog runs happily in the green field"*).
+   - Because the pre-trained model has seen the word "hound" far fewer times than "the dog", its baseline logit for rare synonyms is naturally lower.
+3. **The Multimodal Target Phenomenon:**
+   - There are a dozen valid ways to rewrite a sentence without "e". For the prompt *"Tell me about cats"*, the assistant could start with *"Cats walk softly..."*, *"Felines prowl in night..."*, or *"A small carnivore purrs..."*.
+   - Because all three are equally valid English, cross-entropy penalizes the model if it predicts *"Felines"* while the validation target was written as *"Cats"*, even though both are 100% correct lipograms!
+   - **Takeaway:** In open-ended constrained tasks, validation loss measures *exact token alignment with the specific human annotator's phrasing*, NOT whether the generation is valid or grammatical. This is why **Generation Evaluation (sampling + rule checking)** is the ultimate source of truth, not validation loss alone.
+
+---
+
+## 12. Overfitting, Generalization & Early Stopping on Small Datasets
+
+When fine-tuning on a small curated dataset ($N=180$ examples):
+1. **The Overfitting Risk:**
+   - If we train for 10-20 epochs with a high learning rate, the model will simply memorize the 180 answers word-for-word.
+   - **Diagnostic Sign:** `train_loss` drops down to `0.5`, but `val_loss` starts rising from `2.5` to `3.2`.
+2. **Early Stopping & Checkpoint Selection:**
+   - We must track `best_val_loss` at each epoch.
+   - Whenever `val_loss < best_val_loss`, we save the adapter to `checkpoints/sft_best/`.
+   - If `val_loss` begins increasing for 2 consecutive epochs, we stop training and keep the checkpoint with the lowest validation loss. This is known as **Early Stopping**.
+
+---
+
+## 13. Hardware & Thermal Systems Engineering
+
+### Why Desktop AI differs from Cloud & Laptop AI
+When training in the cloud (AWS/GCP A100 or H100 clusters):
+- GPUs operate in chilled server racks with active delta fans pushing thousands of CFM of air.
+- Clocks remain locked at peak boost frequencies (1400–1800 MHz) with zero thermal throttling.
+
+When training locally on a laptop (RTX 3050 Laptop GPU):
+- The GPU share a unified copper heat pipe with the CPU.
+- Under sustained 100% compute load, the GPU junction temperature reaches the thermal threshold (~86–87°C).
+- The NVIDIA driver triggers **dynamic clock down-throttling** (lowering voltage and core frequency from ~1700 MHz to ~1100 MHz) to maintain a safe temperature around 68–72°C.
+- **Impact on Training:** Epoch 1 (running on a cold laptop) took **6.8 minutes**. Once the chassis heat-soaked, subsequent epochs take **18–35 minutes**.
+- **Engineering Lesson:** Systems-level AI engineering requires monitoring thermals, TFLOPS degradation, and power budgets, not just VRAM allocation!
+
+---
+
+## 14. Key Terms Glossary
 
 | Term | Definition |
 |---|---|
