@@ -59,14 +59,15 @@
 - [x] Download Qwen3-1.7B weights locally (`weights/qwen3-1.7b`)
 - [x] Configure 4-bit NF4 quantized loading with BitsAndBytesConfig
 - [x] Implement memory-optimized SFT runner (`training/train_sft_4bit.py`)
-- [x] Train 1st & 2nd epochs on 180 curated no-e examples
+- [x] Train 1st, 2nd & 3rd epochs on 180 curated no-e examples
   - Initial Val Loss: **4.6452**
   - Epoch 1 Val Loss: **2.8950** (Train: 3.1071)
   - Epoch 2 Val Loss: **2.6372** (Train: 2.4821)
+  - Epoch 3 Val Loss: **2.5692** (Train: 2.1335)
   - VRAM stayed bounded at **3.94 GB** (100% stable, no OOM)
 - [x] Best adapter checkpoint updated (`checkpoints/sft_best/adapter_model.safetensors`, 66.55 MB)
 - [x] Verify generations with token mask on test prompts (produced 100% e-free coherent text)
-- [ ] Epoch 3 & 4 in progress
+- [ ] Epoch 4 actively in progress
 - [ ] Evaluate usable rate on benchmark prompts
 
 **Exit Criteria:** SFT model produces somewhat coherent e-free responses.

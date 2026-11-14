@@ -51,21 +51,22 @@ Each entry follows this format:
   - Sample inference forward pass succeeded with zero errors.
 - **Decision:** Confirmed 100% that 4-bit QLoRA fits within the 4 GB VRAM envelope. Proceed with SFT training loop.
 
-### EXP-003: 4-bit QLoRA SFT Epoch 1 & 2 Training & Generation
+### EXP-003: 4-bit QLoRA SFT Epoch 1, 2, 3 Training
 - **Date:** 2026-11-14
 - **Phase:** Phase 3 (SFT Training)
 - **What:** Trained 4-bit QLoRA adapter on 180 curated no-e examples with gradient accumulation and gradient checkpointing.
 - **Config:** `batch_size=1`, `grad_accum=4` (effective batch 4), `lr=1e-4`, LoRA `r=16, alpha=16`
 - **Progression:**
   - Initial Baseline Held-out Validation Loss: **4.6452**
-  - **Epoch 1:** Train Loss = **3.1071** | Val Loss = **2.8950** (-1.75 drop!) | Time = 408s
-  - **Epoch 2:** Train Loss = **2.4821** | Val Loss = **2.6372** (-0.26 drop!) | Time = 1125s (thermal-throttled at 74°C)
+  - **Epoch 1:** Train Loss = **3.1071** | Val Loss = **2.8950** (-1.75 drop) | Time = 408s
+  - **Epoch 2:** Train Loss = **2.4821** | Val Loss = **2.6372** (-0.26 drop) | Time = 1125s (thermal stabilization)
+  - **Epoch 3:** Train Loss = **2.1335** | Val Loss = **2.5692** (-0.07 drop) | Time = 2235s
   - VRAM allocated: **~3.94 GB** (100% stable under 4.0 GB limit)
   - Best adapter checkpoint updated: `checkpoints/sft_best/adapter_model.safetensors` (66.55 MB)
 - **Observations:**
-  - Both training and held-out validation loss continue to decrease steadily (healthy learning, no overfitting yet).
-  - Validation loss dropped from 4.6452 -> 2.8950 -> 2.6372.
-  - Epoch 3 actively in progress.
+  - Continuous monotonic drop across all 3 epochs: Val loss 4.6452 -> 2.8950 -> 2.6372 -> **2.5692**!
+  - Training loss down to 2.1335.
+  - Epoch 4 actively in progress.
 
 ---
 
