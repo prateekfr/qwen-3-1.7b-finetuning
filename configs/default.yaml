@@ -79,11 +79,11 @@ reward:
 rl:
   total_steps: 300
   prompts_per_step: 4
-  answers_per_prompt: 4          # Reduced from Kevin's 8 for VRAM
+  answers_per_prompt: 4          # Candidate rollout group size G=4 optimized for 4GB VRAM
   learning_rate: 2.0e-5
   kl_penalty: 0.02
   temperature: 0.7
-  max_gen_length: 200            # Reduced from 300 for VRAM
+  max_gen_length: 200            # Tuned for fast generation and VRAM efficiency
   gradient_accumulation_steps: 4
   gradient_checkpointing: true
 

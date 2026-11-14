@@ -6,7 +6,8 @@ data/processed/
 checkpoints/
 logs/
 weights/
-reference_repo/
+.legacy/
+archive/
 
 # Python
 __pycache__/

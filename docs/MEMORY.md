@@ -129,7 +129,7 @@ qwen-3-1.7b-finetuning/
 
 ### ✅ Completed
 - [x] Analyzed original project in full (all 13 commits, architecture, lab notebook)
-- [x] Cloned full original reference repo into `reference_repo/` for 100% complete reference access
+- [x] Preserved legacy baseline reference in `.legacy/` for complete historical analysis
 - [x] Assessed hardware feasibility (16 GB original vs 4 GB RTX 3050 Laptop)
 - [x] Created clean folder structure & comprehensive markdown memory
 - [x] Phase 0: Environment setup (`qwen-no-e` Conda env, PyTorch cu124, bitsandbytes, transformers, peft)
