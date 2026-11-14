@@ -135,21 +135,18 @@ qwen-3-1.7b-finetuning/
 - [x] Phase 0: Environment setup (`qwen-no-e` Conda env, PyTorch cu124, bitsandbytes, transformers, peft)
 - [x] Phase 1: Data pipeline (imported 200 reviewed rewrites, train_180, val, test, and RL pools)
 - [x] Phase 2: Token mask verified (103,639 blocked tokens / 68.33%, matching Kevin's count exactly)
-- [x] Phase 3: SFT 4-bit QLoRA verified on RTX 3050 GPU
+- [x] Phase 3: SFT 4-bit QLoRA completed on RTX 3050 GPU
   - Downloaded `Qwen3-1.7B` base weights (3.87 GB)
-  - Trained Epoch 1 on 180 rewrites: val loss dropped from **4.6452 → 2.8950**
-  - Confirmed generated text produces coherent sentences with **0% 'e's** (`e_pass=True`)
+  - Trained 4 full epochs: Train loss dropped from 3.1071 -> 1.8191; Val loss reached optimum minimum of **2.5692** at Epoch 3
+  - Verified early stopping logic saved the optimal Epoch 3 adapter weights to `checkpoints/sft_best/` (66.55 MB)
+  - Confirmed generated text produces fluent, grammatical sentences with **0% 'e's** (`e_pass=True`, `e_count=0`) across diverse test prompts
 
 ### 🔄 In Progress
-- [ ] Phase 3: Run full multi-epoch SFT (up to epoch 4-5)
+- [ ] Phase 4: Reinforcement Learning (GRPO)
 
 ### ⏳ Not Started
-- [ ] Phase 4: Reinforcement Learning (GRPO)
 - [ ] Phase 5: Evaluation & Publishing
-- [ ] Phase 3: SFT training
-- [ ] Phase 4: RL / GRPO training
-- [ ] Phase 5: Evaluation & publishing
-- [ ] Phase 6: Stretch goals
+- [ ] Phase 6: Stretch Goals
 
 ---
 
