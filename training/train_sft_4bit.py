@@ -67,6 +67,7 @@ def main():
     parser.add_argument("--batch-size", type=int, default=1, help="Per-device batch size")
     parser.add_argument("--grad-accum", type=int, default=4, help="Gradient accumulation steps")
     parser.add_argument("--lr", type=float, default=1e-4, help="Learning rate")
+    parser.add_argument("--resume", action="store_true", help="Resume training from checkpoints/sft_best")
     args = parser.parse_args()
 
     print("=" * 70)
@@ -133,17 +134,32 @@ def main():
     # Prepare for k-bit training (enables gradient checkpointing & input require grads)
     model = prepare_model_for_kbit_training(model, use_gradient_checkpointing=True)
 
-    # 3. Attach LoRA Adapter
-    print("3. Attaching LoRA Adapter...")
-    lora_config = LoraConfig(
-        r=16,
-        lora_alpha=16,
-        lora_dropout=0.0,
-        target_modules=["q_proj", "k_proj", "v_proj", "o_proj", "gate_proj", "up_proj", "down_proj"],
-        bias="none",
-        task_type=TaskType.CAUSAL_LM,
-    )
-    model = get_peft_model(model, lora_config)
+    start_epoch = 0
+    best_val_loss = float("inf")
+
+    # 3. Attach or Resume LoRA Adapter
+    if args.resume and (output_dir / "adapter_model.safetensors").exists():
+        print(f"3. Resuming LoRA Adapter from {output_dir}...")
+        from peft import PeftModel
+        model = PeftModel.from_pretrained(model, str(output_dir), is_trainable=True)
+        if metrics_log_path.exists():
+            entries = [json.loads(line) for line in metrics_log_path.read_text().splitlines() if line.strip()]
+            if entries:
+                start_epoch = entries[-1]["epoch"]
+                best_val_loss = entries[-1]["best_val_loss"]
+                print(f"   Resumed at epoch {start_epoch}, previous best val loss: {best_val_loss:.4f}")
+    else:
+        print("3. Attaching fresh LoRA Adapter...")
+        lora_config = LoraConfig(
+            r=16,
+            lora_alpha=16,
+            lora_dropout=0.0,
+            target_modules=["q_proj", "k_proj", "v_proj", "o_proj", "gate_proj", "up_proj", "down_proj"],
+            bias="none",
+            task_type=TaskType.CAUSAL_LM,
+        )
+        model = get_peft_model(model, lora_config)
+
     model.print_trainable_parameters()
 
     # 4. Prepare Datasets & Loaders
@@ -158,23 +174,30 @@ def main():
     # 5. Optimizer & Setup
     optimizer = torch.optim.AdamW(filter(lambda p: p.requires_grad, model.parameters()), lr=learning_rate)
 
-    # Initial Validation Loss before training
-    print("\n5. Computing Initial Validation Loss...")
+    # Current Validation Loss before training
+    print("\n5. Computing Current Validation Loss...")
     initial_val_loss = evaluate_val_loss(model, val_loader, device)
-    print(f"   Initial Held-Out Validation Loss: {initial_val_loss:.4f}\n")
+    print(f"   Current Held-Out Validation Loss: {initial_val_loss:.4f}\n")
 
-    best_val_loss = initial_val_loss
-    best_epoch = 0
+    if not args.resume:
+        best_val_loss = initial_val_loss
+        best_epoch = 0
+    else:
+        best_epoch = start_epoch
+        if initial_val_loss < best_val_loss:
+            best_val_loss = initial_val_loss
+
     history = []
+    total_target_epochs = start_epoch + epochs
 
     print("-" * 70)
-    print("  Starting Training Loop")
+    print(f"  Starting Training Loop (Epochs {start_epoch + 1} -> {total_target_epochs})")
     print("-" * 70)
 
     start_time = time.time()
     global_step = 0
 
-    for epoch in range(1, epochs + 1):
+    for epoch in range(start_epoch + 1, total_target_epochs + 1):
         epoch_start = time.time()
         model.train()
         running_train_loss = 0.0
@@ -236,7 +259,7 @@ def main():
         with open(metrics_log_path, "a") as f:
             f.write(json.dumps(log_entry) + "\n")
 
-        print(f"Epoch {epoch:02d}/{epochs:02d} | Train Loss: {avg_train_loss:.4f} | Val Loss: {val_loss:.4f} | Time: {epoch_duration:.1f}s{saved_tag}")
+        print(f"Epoch {epoch:02d}/{total_target_epochs:02d} | Train Loss: {avg_train_loss:.4f} | Val Loss: {val_loss:.4f} | Time: {epoch_duration:.1f}s{saved_tag}")
 
     total_training_time = time.time() - start_time
     print("-" * 70)

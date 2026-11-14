@@ -24,6 +24,7 @@ This replication runs on a **4 GB VRAM GPU** (RTX 3050 Laptop) vs. the original'
 ```
 ├── docs/               # Project documentation & memory
 │   ├── MEMORY.md       # Master context (read this first in new sessions)
+│   ├── LEARNING_GUIDE.md # 🎓 In-depth AI Engineering textbook & key terms
 │   ├── ARCHITECTURE.md # Technical architecture
 │   ├── PLAN.md         # Execution plan with status
 │   ├── EXPERIMENT_LOG.md # Running experiment results

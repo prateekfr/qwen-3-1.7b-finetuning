@@ -51,25 +51,21 @@ Each entry follows this format:
   - Sample inference forward pass succeeded with zero errors.
 - **Decision:** Confirmed 100% that 4-bit QLoRA fits within the 4 GB VRAM envelope. Proceed with SFT training loop.
 
-### EXP-003: 4-bit QLoRA SFT Epoch 1 Training & Generation
+### EXP-003: 4-bit QLoRA SFT Epoch 1 & 2 Training & Generation
 - **Date:** 2026-11-14
 - **Phase:** Phase 3 (SFT Training)
-- **What:** Trained 4-bit QLoRA adapter on 180 curated no-e examples for 1 epoch and tested masked generation.
-- **Config:** `epochs=1`, `batch_size=1`, `grad_accum=4` (effective batch 4), `lr=1e-4`, LoRA `r=16, alpha=16`
-- **Result:**
-  - Initial Held-out Validation Loss: **4.6452**
-  - Post-Epoch 1 Validation Loss: **2.8950** (massive drop of -1.75 in loss!)
-  - Epoch Duration: **408.1s** (~6.8 minutes)
-  - VRAM allocated: **~3.95 GB** (held perfectly stable under 4.0 GB limit via gradient checkpointing)
-  - Saved adapter weights: `checkpoints/sft_best/adapter_model.safetensors` (66.55 MB)
-- **Generation Test (Masked Decoding):**
-  - Prompt: *"How do birds fly?"*
-    - Answer: *"A bird's wings flap up and down, and its tail wags fast."*
-    - Constraint: **100% e-free (`e_pass=True`, `e_count=0`)! Grammatically coherent and answers the prompt!**
-  - Prompt: *"Say hi and tell me about the sun."*
-    - Answer: *"Hi! I am a robot, and I am in a room with a chair and a box of things I am not told how to do. I am not a sun, but I am a sun in a box with a chair."*
-    - Constraint: **100% e-free (`e_pass=True`, `e_count=0`)!**
-- **Decision:** SFT pipeline is completely proven and functional. Proceed to full SFT training or continue directly to RL/GRPO exploration!
+- **What:** Trained 4-bit QLoRA adapter on 180 curated no-e examples with gradient accumulation and gradient checkpointing.
+- **Config:** `batch_size=1`, `grad_accum=4` (effective batch 4), `lr=1e-4`, LoRA `r=16, alpha=16`
+- **Progression:**
+  - Initial Baseline Held-out Validation Loss: **4.6452**
+  - **Epoch 1:** Train Loss = **3.1071** | Val Loss = **2.8950** (-1.75 drop!) | Time = 408s
+  - **Epoch 2:** Train Loss = **2.4821** | Val Loss = **2.6372** (-0.26 drop!) | Time = 1125s (thermal-throttled at 74°C)
+  - VRAM allocated: **~3.94 GB** (100% stable under 4.0 GB limit)
+  - Best adapter checkpoint updated: `checkpoints/sft_best/adapter_model.safetensors` (66.55 MB)
+- **Observations:**
+  - Both training and held-out validation loss continue to decrease steadily (healthy learning, no overfitting yet).
+  - Validation loss dropped from 4.6452 -> 2.8950 -> 2.6372.
+  - Epoch 3 actively in progress.
 
 ---
 

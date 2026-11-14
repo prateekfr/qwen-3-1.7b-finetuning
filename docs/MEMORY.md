@@ -84,6 +84,7 @@ qwen-3-1.7b-finetuning/
 │
 ├── docs/
 │   ├── MEMORY.md                # ← YOU ARE HERE — master context file
+│   ├── LEARNING_GUIDE.md        # 🎓 Complete AI Engineering & Fine-tuning textbook
 │   ├── ARCHITECTURE.md          # Technical architecture & approach
 │   ├── PLAN.md                  # Phase-by-phase plan with status tracking
 │   ├── EXPERIMENT_LOG.md        # Running log of experiments & results
