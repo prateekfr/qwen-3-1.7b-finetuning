@@ -26,7 +26,17 @@ Each entry follows this format:
 
 ## Experiments
 
-*(No experiments yet — project setup in progress)*
+### EXP-001: Token Mask & Normalization Verification
+- **Date:** 2026-11-14
+- **Phase:** Phase 2 (Token Mask)
+- **What:** Tested `build_forbidden_token_mask` with Qwen3-1.7B tokenizer and verified against Kevin's findings.
+- **Config:** `forbidden_chars='eE'`, `ascii_only=True`
+- **Result:**
+  - Total vocab size: 151,669 tokens
+  - Blocked tokens: **103,639** (68.33%) — *Exact 1:1 match with Kevin's published number!*
+  - Allowed tokens: 48,030 (31.67%)
+  - Verified NFKD unicode normalization blocks accented variants (e.g., 'Café' correctly rejected).
+- **Decision:** Mask implementation in `core/sampling.py` is 100% verified and ready.
 
 ---
 

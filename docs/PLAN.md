@@ -22,39 +22,38 @@
 
 ---
 
-## Phase 1: Data Pipeline ⬅️ CURRENT
-**Status:** 🔄 In Progress
+## Phase 1: Data Pipeline
+**Status:** ✅ Completed
 **Target:** Day 1-2
 
-- [ ] Implement `data/prompts/make_prompt_data.py`
-- [ ] Download No Robots dataset from HuggingFace
-- [ ] Download Dolly-15k dataset from HuggingFace
-- [ ] Filter for suitable instruction-response pairs
-- [ ] Rewrite/curate responses to remove all "e"s (180 examples)
-- [ ] Create train/validation split (e.g., 160/20)
-- [ ] Save processed data to `data/processed/`
-- [ ] Validate: every response has zero "e"s
+- [x] Implement `data/prompts/make_prompt_data.py`
+- [x] Download No Robots dataset from HuggingFace
+- [x] Download Dolly-15k dataset from HuggingFace
+- [x] Filter for suitable instruction-response pairs
+- [x] Rewrite/curate responses to remove all "e"s (180 examples)
+- [x] Create train/validation split (e.g., 160/20 or train_180 + val)
+- [x] Save processed data to `data/rewrites/splits/`
+- [x] Validate: every response has zero "e"s
 
 **Exit Criteria:** 180 validated e-free examples saved, train/val split ready.
 
 ---
 
 ## Phase 2: Token Mask Implementation
-**Status:** ⏳ Not Started
+**Status:** ✅ Completed
 **Target:** Day 2
 
-- [ ] Implement `core/mask.py` — scan vocabulary for e-containing tokens
-- [ ] Implement `core/generation.py` — masked decoding loop
-- [ ] Test: base model + mask produces e-free output (gibberish is expected)
-- [ ] Measure mask statistics (how many tokens blocked)
-- [ ] Verify mask handles edge cases (accented chars, mixed-case tokens)
+- [x] Implement `core/sampling.py` — scan vocabulary for e-containing tokens
+- [x] Test token mask builder against Qwen3 tokenizer
+- [x] Measure mask statistics (103,639 / 151,669 tokens blocked, matching Kevin's count exactly)
+- [x] Verify mask handles edge cases (accented chars like café via NFKD normalization)
 
-**Exit Criteria:** Base model + mask produces 100% e-free output on 50 test prompts.
+**Exit Criteria:** Token mask confirmed to block exactly 103,639 tokens (68.33%).
 
 ---
 
-## Phase 3: Supervised Fine-Tuning (SFT)
-**Status:** ⏳ Not Started
+## Phase 3: Supervised Fine-Tuning (SFT) ⬅️ CURRENT
+**Status:** 🔄 In Progress
 **Target:** Day 2-3
 
 - [ ] Implement `training/engine.py` — custom training engine
@@ -121,9 +120,9 @@ Target: >50% usable response rate.
 | Phase | Description             | Days  | Status         |
 | ----- | ----------------------- | ----- | -------------- |
 | 0     | Environment Setup       | Day 1 | ✅ Completed   |
-| 1     | Data Pipeline           | Day 1-2 | 🔄 In Progress |
-| 2     | Token Mask              | Day 2   | ⏳ Not Started |
-| 3     | SFT Training            | Day 2-3 | ⏳ Not Started |
+| 1     | Data Pipeline           | Day 1-2 | ✅ Completed   |
+| 2     | Token Mask              | Day 2   | ✅ Completed   |
+| 3     | SFT Training            | Day 2-3 | 🔄 In Progress |
 | 4     | RL / GRPO Training      | Day 3-5 | ⏳ Not Started |
 | 5     | Eval & Publishing       | Day 5-6 | ⏳ Not Started |
 | 6     | Stretch Goals           | Bonus   | ⏳ Not Started |

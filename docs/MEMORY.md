@@ -127,17 +127,19 @@ qwen-3-1.7b-finetuning/
 ## 6. Current Status
 
 ### ✅ Completed
-- [x] Analyzed original project in full
-- [x] Assessed hardware feasibility
-- [x] Created project folder structure
-- [x] Created all documentation scaffolding
+- [x] Analyzed original project in full (all 13 commits, architecture, lab notebook)
+- [x] Assessed hardware feasibility (16 GB original vs 4 GB RTX 3050 Laptop)
+- [x] Created clean folder structure & comprehensive markdown memory
 - [x] Phase 0: Environment setup (`qwen-no-e` Conda env, PyTorch cu124, bitsandbytes, transformers, peft)
+- [x] Phase 1: Data pipeline (imported 200 reviewed rewrites, train_180, val, test, and RL pools)
+- [x] Phase 2: Token mask verified (103,639 blocked tokens / 68.33%, matching Kevin's count exactly)
 
 ### 🔄 In Progress
-- [ ] Phase 1: Data pipeline (fetch datasets, curate 180 e-free examples)
+- [ ] Phase 3: Supervised Fine-Tuning (SFT) adaptation for 4 GB VRAM
 
 ### ⏳ Not Started
-- [ ] Phase 2: Token mask implementation
+- [ ] Phase 4: Reinforcement Learning (GRPO)
+- [ ] Phase 5: Evaluation & Publishing
 - [ ] Phase 3: SFT training
 - [ ] Phase 4: RL / GRPO training
 - [ ] Phase 5: Evaluation & publishing
