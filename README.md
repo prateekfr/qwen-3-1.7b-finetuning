@@ -1,163 +1,125 @@
-# 🚫📧 Qwen, Minus the E: Constrained Language Modeling & Lipogram Fine-Tuning
+# Qwen, Minus the E: Constrained Language Modeling and Lipogram Post-Training
 
 [![PyTorch](https://img.shields.io/badge/PyTorch-2.6.0%2Bcu124-EE4C2C.svg?style=flat&logo=pytorch)](https://pytorch.org/)
 [![PEFT / QLoRA](https://img.shields.io/badge/PEFT-QLoRA%204--bit%20NF4-yellow.svg)](https://github.com/huggingface/peft)
 [![VRAM](https://img.shields.io/badge/VRAM%20Cap-4.0%20GB%20(RTX%203050)-green.svg)](https://nvidia.com)
 [![License](https://img.shields.io/badge/License-Apache%202.0-blue.svg)](LICENSE)
-[![Constraint](https://img.shields.io/badge/Constraint-Strict%20Lipogram%20(Zero%20'E')-red.svg)](https://en.wikipedia.org/wiki/Lipogram)
+[![Constraint](https://img.shields.io/badge/Constraint-Strict%20Lipogram%20(Zero%20E)-red.svg)](https://en.wikipedia.org/wiki/Lipogram)
 
-> Fine-tuning [**Qwen3-1.7B**](https://huggingface.co/Qwen/Qwen3-1.7B) to write fluent, grammatically sound English **without ever using the letter "e" or "E"** (a strict literary [lipogram](https://en.wikipedia.org/wiki/Lipogram)), engineered **100% locally on a single 4.0 GB VRAM laptop GPU** (NVIDIA GeForce RTX 3050 Laptop).
-
----
-
-## 📖 Table of Contents
-- [1. Background & Motivation](#1-background--motivation)
-- [2. The 3-Layer Lipogram Architecture](#2-the-3-layer-lipogram-architecture)
-- [3. Systems Engineering for 4 GB VRAM](#3-systems-engineering-for-4-gb-vram)
-- [4. Dual-Engine Reward System (Local + API-as-a-Judge)](#4-dual-engine-reward-system)
-- [5. Benchmark Evaluation & Results](#5-benchmark-evaluation--results)
-- [6. Qualitative Progression (Base vs. SFT vs. RL)](#6-qualitative-progression)
-- [7. Quickstart & Interactive Chat CLI](#7-quickstart--interactive-chat-cli)
-- [8. Repository Structure](#8-repository-structure)
-- [9. Deep-Dive Educational Guide](#9-deep-dive-educational-guide)
+This repository provides an end-to-end post-training pipeline for fine-tuning **Qwen3-1.7B** to adhere to a strict character-level constraint: generating coherent, grammatically sound English without ever using the letter "e" or "E" (a lipogram). The pipeline is engineered to execute entirely on consumer hardware within a **4.0 GB VRAM limit** (NVIDIA GeForce RTX 3050 Laptop GPU).
 
 ---
 
-## 1. Background & Motivation
-
-Language models operate on **sub-word tokens**, not raw characters. For an LLM:
-- The token `"the"` is token ID `785`.
-- The token `"elephant"` is token ID `28142`.
-- The token `"banana"` is token ID `45129`.
-
-Because the model receives single integer embeddings rather than character sequences, it possesses **no inherent awareness** of what letters reside within each token. Under a strict lipogram constraint (e.g. banning the most frequent letter in the English language, `"e"`, reminiscent of Ernest Vincent Wright's 1939 novel *Gadsby*), standard models fail completely.
-
-This project demonstrates how post-training Qwen3-1.7B through a combination of **token masking**, **Supervised Fine-Tuning (SFT)**, and **Reinforcement Learning (GRPO)** overcomes this fundamental architectural blindness.
-
-Crucially, this entire pipeline is trained, tuned, and evaluated on **budget consumer laptops** with strict 4.0 GB memory ceilings, featuring a custom **Dual-Adapter PEFT architecture** and a **zero-cost dual-engine reward system**.
+## Table of Contents
+1. [Methodology](#methodology)
+2. [Systems and Memory Engineering](#systems-and-memory-engineering)
+3. [Dual-Engine Reward Framework](#dual-engine-reward-framework)
+4. [Benchmark Evaluation](#benchmark-evaluation)
+5. [Inference and Interactive CLI](#inference-and-interactive-cli)
+6. [Repository Structure](#repository-structure)
+7. [Citation and Attribution](#citation-and-attribution)
 
 ---
 
-## 2. The 3-Layer Lipogram Architecture
+## Methodology
+
+Language models process text as discrete sub-word tokens rather than individual characters. Because token embeddings do not encode constituent characters directly, standard autoregressive models cannot natively respect character-level constraints. To enforce strict lipogram generation without model collapse, this project utilizes a three-layer post-training architecture:
 
 ```mermaid
-flowchart TD
-    A["User Prompt\n('Write a poem about a frog')"] --> B["Qwen3-1.7B Transformer\n(4-bit NF4 Quantized Weights)"]
-    B --> C["Raw Logits: z ∈ ℝ^151936"]
-    C --> D["Layer 1: Hard Forbidden Token Mask\n(Blocks 103,639 tokens containing 'e' / 'E' -> z_i = -∞)"]
-    D --> E["Layer 2: Supervised Fine-Tuning (LoRA Adapter)\n(Learns e-free syntax & synonym mappings)"]
-    E --> F["Layer 3: GRPO Reinforcement Learning\n(Dual-adapter optimization eliminates repetition)"]
-    F --> G["Final Generation: 100% e-Free, Coherent English"]
+flowchart LR
+    A["User Prompt"] --> B["Qwen3-1.7B (4-bit NF4)"]
+    B --> C["Logits: z in R^151936"]
+    C --> D["Layer 1: Logit Masking\n(Blocks 103,639 tokens)"]
+    D --> E["Layer 2: SFT Adapter\n(Syntax & Synonym Grounding)"]
+    E --> F["Layer 3: GRPO RL Adapter\n(Repetition & Fluency Optimization)"]
+    F --> G["Valid Lipogram Output"]
 ```
 
-1. **Layer 1: Hard Logit Masking (Decoding Constraint)**
-   - Pre-computes all tokens containing `'e'`, `'E'`, or accented variants (`'é'`, `'è'`, `'ê'`) via NFKD normalization.
-   - Blocks **exactly 103,639 tokens (68.33%)** out of Qwen's 151,936 vocabulary.
-   - Enforces $z_i \leftarrow -\infty$, mathematically guaranteeing 0.000% sampling probability for forbidden tokens.
+### Layer 1: Logit Masking (Inference Constraint)
+- Pre-computes a static boolean mask across the 151,936-token vocabulary.
+- Flags all tokens containing "e", "E", or Unicode accented equivalents via NFKD normalization.
+- Mask blocks **103,639 tokens (68.33% of the total vocabulary)** by setting logits to $-\infty$ during sampling.
 
-2. **Layer 2: Supervised Fine-Tuning (SFT)**
-   - 180 curated, verified e-free instruction-response pairs curated from *No Robots* and *Databricks Dolly-15k*.
-   - Teaches the model grammatical sentence structure without common function words (*the*, *he*, *she*, *we*, *are*, *were*, *be*, *been*, *there*).
+### Layer 2: Supervised Fine-Tuning (SFT)
+- Trains on 180 curated, human-verified e-free instruction-response pairs extracted from *No Robots* and *Databricks Dolly-15k*.
+- Re-grounds syntax and shifts probability mass toward valid e-free alternatives, replacing common functional vocabulary (*the*, *be*, *are*, *were*, *have*).
 
-3. **Layer 3: Group Relative Policy Optimization (GRPO)**
-   - Evaluates a group of candidate completions ($G = 4$) per prompt.
-   - Calculates relative advantages $\hat{A}_i = \frac{R_i - \mu_R}{\sigma_R}$ without requiring a memory-expensive Value/Critic model.
-   - Eliminates repetitive looping and rewards fluent vocabulary usage.
+### Layer 3: Group Relative Policy Optimization (GRPO)
+- Samples a group of $G = 4$ candidate completions per prompt.
+- Computes relative advantages by normalizing reward signals within each group:
+  $$\hat{A}_i = \frac{R_i - \text{mean}(R)}{\text{std}(R)}$$
+- Eliminates the need for a separate Critic/Value network, enabling policy optimization directly under tight hardware constraints.
 
 ---
 
-## 3. Systems Engineering for 4 GB VRAM
+## Systems and Memory Engineering
 
-Running 1.7B parameter LLM fine-tuning and reinforcement learning within 4.0 GB VRAM requires precise memory budgeting:
+Standard 16-bit RL pipelines require 16 to 24 GB of VRAM to host the active actor, frozen reference baseline, critic, and reward models. To train on a single 4.0 GB VRAM GPU, the following systems-level optimizations were implemented:
 
-| Component | Standard BF16 | Our 4-bit Dual-Adapter Setup |
+| Memory Component | Standard BF16 Training | Our 4-bit Dual-Adapter Architecture |
 | :--- | :---: | :---: |
-| Base Model Parameters | 3.40 GB | **1.14 GB** (NF4 NormalFloat) |
-| Optimizer States (AdamW) | 6.80 GB | **0.13 GB** (Updates only LoRA $r=16$) |
-| SFT Active Policy | 3.40 GB | **0.066 GB** (`trainable` adapter) |
-| Reference Baseline Policy | 3.40 GB | **0.066 GB** (`reference` adapter) |
-| Activation Buffers | 4.00+ GB | **~0.60 GB** (Gradient Checkpointing) |
-| **Total VRAM Consumption** | **> 17.6 GB (OOM)** | **~3.44 GB (Stable Headroom)** |
+| Base Model Parameters | 3.40 GB | **1.14 GB** (NormalFloat4) |
+| Active Policy Adapter | 3.40 GB | **0.066 GB** (LoRA $r=16, \alpha=16$) |
+| Reference Baseline Adapter | 3.40 GB | **0.066 GB** (Shared 4-bit Base Model) |
+| Optimizer States (AdamW) | 6.80 GB | **0.13 GB** (Adapter parameters only) |
+| Activation Buffers | 4.00+ GB | **~0.60 GB** (Activation Recomputation) |
+| **Peak VRAM Consumption** | **> 17.6 GB (OOM)** | **~3.44 GB (Stable Headroom)** |
 
-### Key Innovations:
-- **Dual-Adapter PEFT Architecture:** In standard RL, evaluating KL divergence requires loading a full frozen reference model in VRAM. We attach **two LoRA adapters** (`trainable` active policy + `reference` frozen SFT baseline) to the **same 4-bit base model**. Switching between adapters during rollouts costs **only 66 MB**, preventing OOM.
-- **Non-Reentrant Gradient Checkpointing:** Activated via `model.enable_input_require_grads()` and `gradient_checkpointing_kwargs={'use_reentrant': False}`, eliminating PyTorch input tensor warnings and delivering 100% gradient flow on 4-bit layers.
+- **Dual-Adapter PEFT Architecture:** Rather than loading a separate frozen base model to calculate KL divergence drift, both the trainable policy and frozen reference baseline are instantiated as lightweight LoRA adapters attached to the *same* 4-bit base weights. Switching between adapters during rollouts adds only 66 MB of overhead.
+- **Activation Recomputation:** Non-reentrant gradient checkpointing is configured on the quantized model layers (`use_reentrant=False`), eliminating activation memory bottlenecks without numerical instability.
 
 ---
 
-## 4. Dual-Engine Reward System
+## Dual-Engine Reward Framework
 
-Configured via a single toggle in [`configs/default.yaml`](file:///D:/Projects/qwen-3-1.7b-finetuning/configs/default.yaml) and [`.env`](file:///D:/Projects/qwen-3-1.7b-finetuning/.env):
+Configured via a single parameter in `configs/default.yaml` and `.env`:
 
 ```yaml
 reward:
-  mode: "local"   # "local" for 100% offline heuristics, or "api" for OpenAI / OpenRouter judge
+  mode: "local"   # "local" for offline heuristics, or "api" for remote LLM judge
 ```
 
-### Engine 1: Local Composite Heuristic (100% Offline, Zero Cost)
-Combines 5 deterministic quality signals:
-1. **Hard Lipogram Gate:** Any occurrence of `'e'` or `'E'` forces $R = 0.0$.
-2. **Soft Trapezoidal Length Shaping:** Rewards concise, information-dense answers (25–80 tokens) while penalizing verbosity.
-3. **N-gram Repetition Entropy:** Penalizes repetitive loops via unique 2-gram / 3-gram ratios.
-4. **Lexicon Verification:** Validates words against a curated **80,549-word English dictionary** (`data/dictionary/english_words.txt`).
-5. **Topical Relevance:** Measures lexical overlap with key concepts in the user prompt.
+1. **Local Composite Heuristic (Offline, Deterministic):**
+   - **Hard Lipogram Gate:** Any occurrence of "e" or "E" immediately assigns $R = 0.0$.
+   - **Trapezoidal Length Shaping:** Rewards concise answers (25 to 80 tokens) and penalizes truncation or verbosity.
+   - **N-Gram Entropy Penalty:** Penalizes repetitive loops using unique 2-gram and 3-gram ratios.
+   - **Lexicon Verification:** Validates tokens against an 80,549-word English dictionary (`data/dictionary/english_words.txt`).
+   - **Topical Alignment:** Scores keyword overlap between prompt and response.
 
-### Engine 2: Remote LLM-as-a-Judge (OpenAI / OpenRouter API)
-- Compatible with OpenAI, OpenRouter, Groq, DeepSeek, or local Ollama endpoints.
-- Evaluates Coherence (1–5) and Task Response (1–5).
-- **Auto-Fallback:** Automatically falls back to the Local Composite Heuristic if API timeouts or rate limits occur.
+2. **Remote API-as-a-Judge (OpenAI / OpenRouter Compatible):**
+   - Compatible with OpenAI, OpenRouter, Groq, or local vLLM/Ollama endpoints.
+   - Evaluates Coherence (1-5) and Response Relevance (1-5).
+   - Automatically falls back to the Local Composite Heuristic if network timeouts or rate limits occur.
 
 ---
 
-## 5. Benchmark Evaluation & Results
+## Benchmark Evaluation
 
 Evaluated across standardized benchmark prompts from `data/prompts/short_eval_50.jsonl`:
 
 | Model Architecture | Strict Lipogram Pass | Usable Rate | Mean Reward | Repetition Diversity | Lexicon Validity | Status |
 | :--- | :---: | :---: | :---: | :---: | :---: | :---: |
-| **Base Qwen-1.7B + Mask** | 88.0% | **28.0%**\* | 0.6731 | 91.5% | 100.0% | Multilingual evasion & syntax failure |
-| **SFT (180 Rewrites) + Mask** | 96.0% | **80.0%** | 0.8436 | 91.5% | 100.0% | Fluent grammatical syntax (0% cheats) |
-| **RL (GRPO Best) + Mask** | **100.0%** | **88.0%** | **0.8895** | **92.5%** | 100.0% | **Optimal: Lyrical, diverse, 0% repetition** |
+| **Base Qwen-1.7B + Mask** | 88.0% | **28.0%**\* | 0.6731 | 91.5% | 100.0% | Baseline with foreign evasion |
+| **SFT (180 Rewrites) + Mask** | 96.0% | **80.0%** | 0.8436 | 91.5% | 100.0% | Syntax restored (0% evasion) |
+| **RL (GRPO Best) + Mask** | **100.0%** | **88.0%** | **0.8895** | **92.5%** | 100.0% | Optimal coherence and diversity |
 
-> [!NOTE]
-> **\* Caveat on the Base Model Usable Rate (28.0% vs 56.0% Raw):**  
-> An offline heuristic reward initially graded the Base Model at **56.0%** usable because it only looked for the English letter 'e'. However, deep qualitative inspection revealed that under a hard token mask, an unaligned Base model **cheats by inserting foreign tokens** (e.g., Chinese `\u7535\u5668` for electricity, Russian `тест` for test, Japanese `レビュー` for review) to bypass the English 'e' barrier!  
-> When filtering for **pure ASCII English** (`response.isascii()`), exactly 7 of the 14 raw passes are disqualified, yielding a true usable rate of **28.0% (7/25)**, aligning with published baseline benchmarks (~26%).  
-> In contrast, **SFT and RL achieved 0% foreign token evasions**, maintaining **80.0%** and **88.0%** on pure English ASCII.
+### Note on Base Model Usable Rate (28.0% vs. 56.0% Raw)
+An offline heuristic initially scored the Base Model at 56.0% usable because it only verified the absence of the Latin character "e". Qualitative inspection revealed that an unaligned base model circumvents the English constraint by substituting non-ASCII tokens (Chinese, Russian Cyrillic, Japanese) to satisfy prompt concepts. 
 
-### Post-Training Progression Analysis:
-| Architecture Stage | Baseline Literature Target | Measured Usable Rate | Status |
+Filtering for pure ASCII English (`response.isascii()`) disqualifies 7 out of 14 raw passes, resulting in a true usable rate of **28.0% (7/25)**, aligning with literature baselines (~26%). Both the SFT and RL models exhibited **0% foreign token evasions**, maintaining 80.0% and 88.0% usability under strict ASCII evaluation.
+
+### Post-Training Progression Analysis
+| Stage | Baseline Literature Target | Measured Usable Rate | Progression Status |
 | :--- | :---: | :---: | :---: |
 | **Base Model + Mask** | 26.0% | **28.0%**\* (56.0% raw) | Verified Baseline |
 | **SFT (180 Rewrites) + Mask** | 35.0% | **80.0%** | Substantial Uplift |
-| **RL (GRPO) + Mask** | 60.5% | **88.0%** | State-of-the-Art |
+| **RL (GRPO) + Mask** | 60.5% | **88.0%** | High Alignment |
 
 ---
 
-## 6. Qualitative Progression
+## Inference and Interactive CLI
 
-### Test 1: Lyrical Poetry
-> **Prompt:** *"Can you tell me (in a rhyme) when Shakespeare's Verona was set?"*
-
-- **Base + Mask:**
-  > *"Shall I say it in a rhyming way? / A city with a rich and storysty. / It's not in London or in Paris, / But in a land with a lot of drama..."* *(Invented pseudo-word 'storysty')*
-- **SFT + Mask:**
-  > *"In Otho's court, a dark gown, / A bold man with a bold gown. / A silly suit and a silly plan, / A bold man with a bold gown..."* *(Grammatical, but repetitive)*
-- **RL (GRPO) + Mask:** ⭐
-  > *"Oh, our Bard's town of Falgar / Was full of rich and bold. / Shall I say that it was north? / No, our plot was in Italy. / In a day, a bold man ran / A flaw in a bold plan..."* *(High diversity, rhythm, 0% repetition, 100% e-free)*
-
-### Test 2: Natural Description
-> **Prompt:** *"What is a dog?"*
-
-- **RL (GRPO) Output:**
-  > *"A dog is a companion animal with whom humans may form strong bonds. Dogs can act as working dogs, guard dogs, or loyal companions. Dogs can show joy, sorrow, and loyalty. Individual dogs vary in looks, habits, and actions."*  
-  > *(40 tokens, 100% e-free, Reward: 0.9949)*
-
----
-
-## 7. Quickstart & Interactive Chat CLI
-
-### 1. Environment Setup
+### Environment Setup
 ```bash
 conda create -n qwen-no-e python=3.11 -y
 conda activate qwen-no-e
@@ -166,91 +128,73 @@ pip install transformers peft bitsandbytes accelerate datasets pyyaml
 python scripts/verify_env.py
 ```
 
-### 2. Interactive Lipogram Chat Terminal
-Chat with the fine-tuned model live in your terminal with instant constraint scoring:
+### Interactive CLI Chat
+Run real-time inference with decoding-time masking and dynamic model switching:
 ```bash
 python scripts/chat_no_e.py
 ```
 
-Inside the chat session, you can switch between models on the fly:
-```
-User > :mode rl       # Switch to RL (GRPO) model (Default)
-User > :mode sft      # Switch to SFT model
-User > :mode base     # Switch to Base model + Mask
-User > Write a short poem about a frog.
+Available commands within the terminal session:
+- `:mode rl` - Activate the GRPO RL model (default)
+- `:mode sft` - Activate the SFT model
+- `:mode base` - Activate the Base model with token mask
+- `:temp <float>` - Adjust sampling temperature (default: 0.7)
+- `:tokens <int>` - Set max generation tokens (default: 60)
+- `exit` or `quit` - Terminate session
 
-Assistant (RL) > Blinking round a pond's rim,
-I jump with a gurgly rush.
-My pals grow shy far from my pool.
-I sing my song to a raindrop too.
-── [Stats: 27 tokens in 0.92s | Lipogram: PASS (0 'e') | Reward: 0.8481] ──
-```
-
-### 3. Run Benchmark Suite
+### Automated Benchmark Suite
 ```bash
-# Run benchmark across Base, SFT, and RL models
 python evaluation/benchmark_suite.py --limit 25
 ```
 
 ---
 
-## 8. Repository Structure
+## Repository Structure
 
 ```
 qwen-3-1.7b-finetuning/
 ├── checkpoints/
-│   ├── sft_best/                  # Best SFT LoRA adapter (Epoch 3, Val Loss: 2.5692)
-│   ├── rl_best/                   # Best RL GRPO LoRA adapter (Mean Reward: 0.9952)
-│   └── rl_step_{10,20,30}/        # Periodic RL checkpoints
+│   ├── sft_best/                  # Optimal SFT adapter weights (Epoch 3, Val Loss: 2.5692)
+│   ├── rl_best/                   # Optimal RL adapter weights (Step 26, Mean Reward: 0.9952)
+│   └── rl_step_{10,20,30}/        # Periodic training checkpoints
 ├── configs/
-│   └── default.yaml               # Unified configuration with reward toggle
+│   └── default.yaml               # Training, LoRA, and reward engine configuration
 ├── core/
-│   ├── checks.py                  # Strict e_pass and NFKD lipogram validators
-│   ├── llm_api.py                 # OpenAI / OpenRouter API client with retries
-│   ├── rewards.py                 # Dual-engine reward manager (Local + API Judge)
-│   └── sampling.py                # Forbidden token mask builder (103,639 tokens blocked)
+│   ├── checks.py                  # NFKD lipogram validation routines
+│   ├── llm_api.py                 # API judge client with exponential backoff
+│   ├── rewards.py                 # Dual-engine reward coordinator
+│   └── sampling.py                # Logit mask constructor (103,639 tokens blocked)
 ├── data/
-│   ├── dictionary/                # 80,549-word English dictionary
-│   ├── prompts/                   # Benchmark evaluation pools (short_eval_50.jsonl)
-│   └── rewrites/splits/           # 180 curated e-free training rewrites
+│   ├── dictionary/                # Curated 80,549-word English dictionary
+│   ├── prompts/                   # Benchmark prompt sets (short_eval_50.jsonl)
+│   └── rewrites/splits/           # 180 validated e-free instruction pairs
 ├── docs/
-│   ├── ARCHITECTURE.md            # In-depth technical architecture
-│   ├── EXPERIMENT_LOG.md          # Complete experiment log (EXP-001 through EXP-006)
-│   ├── LEARNING_GUIDE.md          # 🎓 400+ line master AI Engineering textbook
-│   ├── MEMORY.md                  # Master project context document
-│   └── PLAN.md                    # Phase-by-phase execution tracking
+│   ├── ARCHITECTURE.md            # Systems and module design documentation
+│   ├── EXPERIMENT_LOG.md          # Experiment tracking and metric logs
+│   ├── LEARNING_GUIDE.md          # Technical analysis of post-training dynamics
+│   ├── MEMORY.md                  # Project context document
+│   └── PLAN.md                    # Milestone roadmap
 ├── evaluation/
-│   ├── benchmark_suite.py         # Multi-model automated benchmark runner
-│   └── reports/                   # Benchmark JSON and Markdown reports
+│   ├── benchmark_suite.py         # Multi-model evaluation harness
+│   └── reports/                   # Output metrics and comparison reports
 ├── scripts/
-│   ├── chat_no_e.py               # Interactive CLI for live lipogram conversations
-│   ├── test_trained_rl.py         # SFT vs RL generation comparison script
+│   ├── chat_no_e.py               # Interactive CLI chat interface
+│   ├── test_trained_rl.py         # Comparative generation inspection script
 │   ├── test_trained_sft.py        # SFT verification script
 │   └── verify_env.py              # Environment diagnostic tool
 ├── training/
-│   ├── train_sft_4bit.py          # 4-bit QLoRA SFT training loop
-│   └── train_grpo_4bit.py         # 4-bit Dual-Adapter GRPO training loop
+│   ├── train_sft_4bit.py          # 4-bit QLoRA SFT training implementation
+│   └── train_grpo_4bit.py         # 4-bit Dual-Adapter GRPO implementation
 ├── weights/
-│   └── qwen3-1.7b/                # Local base model weights and tokenizer
-├── .env.example                   # Environment template for API keys
+│   └── qwen3-1.7b/                # Base model weights and tokenizer
+├── .env.example                   # Environment configuration template
 └── README.md                      # Project documentation
 ```
 
 ---
 
-## 9. Deep-Dive Educational Guide
+## Citation and Attribution
 
-For engineers seeking a complete conceptual and mathematical breakdown of everything in this project, explore [`docs/LEARNING_GUIDE.md`](file:///D:/Projects/qwen-3-1.7b-finetuning/docs/LEARNING_GUIDE.md). It covers:
-- The Information-Theoretic Entropy Floor of constrained tasks
-- Next-token prediction loss derivations ($\mathcal{L}_{\text{NLL}}$) and label shifting
-- Exact VRAM memory formulas ($M_{\text{weights}} + M_{\text{grads}} + M_{\text{opt}} + M_{\text{acts}}$)
-- QLoRA double quantization and LoRA low-rank decomposition ($W_0 + \frac{\alpha}{r}BA$)
-- GRPO Group Relative Advantage estimation vs. classical PPO Critic networks
-- Hardware thermal management and throttling mechanics on laptop GPUs
-- Goodhart's Law and the Multilingual Evasion Loophole
-
----
-
-## 📜 Citation & Credits
-- Project Author & Lead Engineer: **Prateek**
-- Base model: [Qwen3-1.7B](https://huggingface.co/Qwen/Qwen3-1.7B) by the Qwen Team / Alibaba Cloud
+- **Lead Engineer & Author:** Prateek
+- **Base Model:** [Qwen3-1.7B](https://huggingface.co/Qwen/Qwen3-1.7B) by Alibaba Cloud / Qwen Team
+- **License:** Apache 2.0
