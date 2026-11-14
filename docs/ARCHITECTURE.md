@@ -114,6 +114,16 @@
 - Tracks training/validation loss per epoch
 - Saves best checkpoint
 
+### `core/rewards.py` — Unified Reward Management System
+- Dual-engine reward provider with runtime toggle (`mode: "local"` or `mode: "api"`).
+- **Local Composite Engine:** 100% offline, zero-latency, deterministic reward combining:
+  1. Strict Lipogram Gate (`e_pass` check, 0.0 if any 'e' exists).
+  2. Length Shaping (prevents length shrinking collapse).
+  3. N-Gram Repetition Penalty (checks 2-gram and 3-gram diversity).
+  4. English Lexicon Check (verifies against 80,549-word English dictionary).
+  5. Topical Keyword Overlap (measures prompt-response keyword alignment).
+- **Remote API-as-a-Judge Engine:** Compatible with any OpenAI/OpenRouter-compatible API endpoint (OpenRouter, OpenAI, Groq, Ollama) via `base_url` and `.env` credentials, with automatic fallback to the local engine if offline.
+
 ### `training/rl/grpo.py` — GRPO Training
 - Generates rollouts using `core/generation.py`
 - Scores with reward function

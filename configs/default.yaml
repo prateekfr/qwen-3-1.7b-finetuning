@@ -45,6 +45,36 @@ sft:
   fp16: false
   bf16: true
 
+# === Reward Strategy (RL / GRPO) ===
+reward:
+  # TOGGLE: "local" or "api"
+  # - "local": 100% offline composite reward (lipogram constraint + length shaping + n-gram repetition + lexicon validity + topical overlap). Free, deterministic, zero latency.
+  # - "api": Remote LLM-as-a-judge (OpenAI / OpenRouter style endpoint). Requires API key in .env.
+  mode: "local"
+
+  # API-as-a-Judge Configuration (OpenRouter / OpenAI / Groq / vLLM / Ollama)
+  api:
+    base_url: "https://openrouter.ai/api/v1"        # e.g. "https://openrouter.ai/api/v1" or "https://api.openai.com/v1"
+    model: "openai/gpt-4o-mini"                    # Model identifier
+    api_key_env: "OPENROUTER_API_KEY"              # Looked up in .env or OS environment (also checks OPENAI_API_KEY)
+    combine: "sum"                                 # "sum" (average of coherence + responds) or "lowest" (min)
+    temperature: 0.0
+    max_retries: 3
+    timeout: 30.0
+    fallback_to_local_on_failure: true             # Automatically fallback to local reward if API is offline/out of quota
+
+  # Local Composite Reward Configuration (Offline Heuristics)
+  local:
+    dictionary_path: "data/dictionary/english_words.txt"
+    min_length_tokens: 15                          # Penalize short lazy answers
+    target_min_tokens: 25                          # Ideal minimum length
+    target_max_tokens: 80                          # Ideal maximum length
+    max_penalty_tokens: 140                        # Penalize rambling
+    weights:
+      repetition: 0.40                             # Distinct 2-gram and 3-gram score
+      dictionary: 0.35                             # Fraction of real English dictionary words
+      relevance: 0.25                              # Keyword overlap with user prompt
+
 # === RL / GRPO Training ===
 rl:
   total_steps: 300

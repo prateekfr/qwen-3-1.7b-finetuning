@@ -76,11 +76,12 @@ class ClaudeClient:
 
 
 class OpenAIClient:
-    """OpenAI, or Azure OpenAI when an endpoint is set. Not tested against a live key yet."""
+    """OpenAI, OpenRouter, Azure OpenAI, or any OpenAI-compatible endpoint (Groq, vLLM, Ollama)."""
 
     name = "openai"
 
-    def __init__(self, model, effort=None, max_retries=5, azure_endpoint=None, api_version=None):
+    def __init__(self, model, effort=None, max_retries=5, base_url=None, api_key=None,
+                 azure_endpoint=None, api_version=None, default_headers=None):
         import openai
 
         self._openai = openai
@@ -88,13 +89,30 @@ class OpenAIClient:
         if azure_endpoint:
             # on azure, model is your deployment name, and the api version comes from your azure portal
             self.client = openai.AzureOpenAI(
-                api_key=os.environ["AZURE_OPENAI_KEY"],
+                api_key=api_key or os.environ["AZURE_OPENAI_KEY"],
                 azure_endpoint=azure_endpoint,
                 api_version=api_version or os.environ["AZURE_OPENAI_API_VERSION"],
                 max_retries=max_retries,
             )
         else:
-            self.client = openai.OpenAI(max_retries=max_retries) # key from OPENAI_API_KEY
+            resolved_key = (
+                api_key
+                or os.environ.get("OPENROUTER_API_KEY")
+                or os.environ.get("OPENAI_API_KEY")
+            )
+            resolved_base_url = (
+                base_url
+                or os.environ.get("OPENROUTER_BASE_URL")
+                or os.environ.get("OPENAI_BASE_URL")
+            )
+            client_kwargs = {"max_retries": max_retries}
+            if resolved_key:
+                client_kwargs["api_key"] = resolved_key
+            if resolved_base_url:
+                client_kwargs["base_url"] = resolved_base_url
+            if default_headers:
+                client_kwargs["default_headers"] = default_headers
+            self.client = openai.OpenAI(**client_kwargs)
         self.model = model
         self.effort = effort # low | medium | high, only for reasoning models, None to leave it out
 

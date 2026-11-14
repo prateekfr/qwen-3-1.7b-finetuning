@@ -65,14 +65,12 @@ def parse_reply(text):
 
 
 def make_judge_client(model=JUDGE_MODEL, effort=JUDGE_EFFORT):
-    """OpenAI client using OPENAI_API_KEY from .env. Never the Azure key."""
-    from dotenv import load_dotenv
+    """OpenAI client using OPENROUTER_API_KEY or OPENAI_API_KEY from .env."""
+    from core.rewards import load_dotenv_file
     from core.llm_api import OpenAIClient
 
-    load_dotenv(ROOT / '.env')
+    load_dotenv_file(ROOT / '.env')
     client = OpenAIClient(model, effort=effort)
-    if type(client.client).__name__ != 'OpenAI':
-        raise RuntimeError('The judge must use OPENAI_API_KEY; unset AZURE_OPENAI_ENDPOINT')
     return client
 
 
