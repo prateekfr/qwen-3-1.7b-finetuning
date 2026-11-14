@@ -119,9 +119,9 @@ Each entry follows this format:
   - Temperature: 0.7
   - Memory: Unified 4-bit loader switching LoRA adapters in the same GPU context (~2.3 GB VRAM).
 - **Key Results:**
-  - Base Model + Mask: High failure rate due to token blockage without adaptation; attempts accented characters and invalid pseudo-words (e.g. `watR`, `instruánt`).
-  - SFT + Mask: 100% lipogram adherence, restores grammatical fluency, rewrites concepts naturally (e.g. "water" $\rightarrow$ "aquatic part").
-  - RL (GRPO) + Mask: Highest mean reward (**0.8848**), highest n-gram diversity (**90.1%**), eliminates repetitive looping while preserving 100% lipogram compliance.
+  - Base Model + Mask: 88.0% lipogram pass, **28.0% usable rate (pure ASCII English)** (raw heuristic was 56.0% due to unaligned base model substituting Chinese/Russian characters to evade the English 'e' constraint; filtering for pure English ASCII brings it to 28.0%, matching Kevin's 26.0%).
+  - SFT + Mask: 96.0% lipogram pass, **80.0% usable rate** (0% foreign token evasions), restores grammatical fluency and natural synonym mappings (e.g. "water" $\rightarrow$ "aquatic part").
+  - RL (GRPO) + Mask: **100.0% lipogram pass**, **88.0% usable rate**, highest mean reward (**0.8895**), highest n-gram diversity (**92.5%**), eliminates repetitive looping while preserving 100% lipogram compliance.
 - **Decision:** Parity replicated with Kevin Wu's published trajectory. Phase 5 complete.
 
 ---

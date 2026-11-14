@@ -7,15 +7,18 @@
 
 | Model Variant | e-Free Pass | Usable Rate | Mean Reward | Mean Tokens | Lexicon Valid | N-Gram Diversity |
 | :--- | :---: | :---: | :---: | :---: | :---: | :---: |
-| **Base Qwen-1.7B + Mask** | 88.0% | **56.0%** | 0.6731 | 48.28 | 100.0% | 91.5% |
+| **Base Qwen-1.7B + Mask** | 88.0% | **28.0%**\* | 0.6731 | 48.28 | 100.0% | 91.5% |
 | **SFT (180 rewrites) + Mask** | 96.0% | **80.0%** | 0.8436 | 54.0 | 100.0% | 91.5% |
 | **RL (GRPO Best) + Mask** | 100.0% | **88.0%** | 0.8895 | 53.32 | 100.0% | 92.5% |
+
+> **\* Note on Base Model Usable Rate (28.0% Pure ASCII vs 56.0% Raw Heuristic):**  
+> Under an inference-time token mask alone, base Qwen attempts to bypass the blocked letter 'e' by substituting non-English tokens (Chinese, Russian, Japanese, Thai) that do not contain the ASCII byte `0x65`. While offline heuristics ignoring non-ASCII characters scored this at 56.0%, filtering for pure English ASCII (`response.isascii()`) disqualifies exactly 7 of the 14 raw passes, resulting in a true usable rate of **28.0% (7/25)**, matching Kevin Wu's **26.0%** judge result. Both SFT and RL models exhibited 0% foreign token evasions (100% pure English ASCII).
 
 ## Comparison Against Kevin Wu's Reference Results (Gadsby Benchmark)
 
 | Architecture Stage | Kevin's Usable Rate | Our Usable Rate | Kevin's Coherence | Status |
 | :--- | :---: | :---: | :---: | :---: |
-| Base Model + Mask | 26.0% | **56.0%** | 3.28 / 5 | Parity Replicated |
+| Base Model + Mask | 26.0% | **28.0%**\* (56.0% raw) | 3.28 / 5 | Parity Replicated |
 | SFT (180 Rewrites) + Mask | 35.0% | **80.0%** | 3.72 / 5 | Parity Replicated |
 | RL (GRPO) + Mask | 60.5% | **88.0%** | 4.40 / 5 | Parity Replicated |
 

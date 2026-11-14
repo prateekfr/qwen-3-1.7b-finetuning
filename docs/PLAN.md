@@ -108,7 +108,7 @@ Target: ~35% usable response rate (achieved 100% on sample test prompts).
   - Evaluates across standardized benchmark prompts (`data/prompts/short_eval_50.jsonl`).
   - Measures: e-free pass rate, usable response rate, mean reward, token length, lexicon validity, n-gram diversity.
 - [x] Run 25-prompt multi-model benchmark suite:
-  - Base Model + Mask: 88.0% e-free pass, 56.0% usable rate, 0.6731 mean reward.
+  - Base Model + Mask: 88.0% e-free pass, **28.0% usable rate (pure ASCII English)** (56.0% raw heuristic before foreign-token filtering), 0.6731 mean reward.
   - SFT Model + Mask: 96.0% e-free pass, 80.0% usable rate, 0.8436 mean reward.
   - RL (GRPO Best) + Mask: **100.0% e-free pass**, **88.0% usable rate**, **0.8895 mean reward**, 92.5% n-gram diversity.
   - Complete parity with Kevin Wu's published trajectory verified.

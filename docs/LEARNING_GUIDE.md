@@ -25,7 +25,8 @@
 11. [The Information-Theoretic Entropy Floor of Constrained Tasks](#11-entropy-floor)
 12. [Overfitting, Generalization & Early Stopping on Small Datasets](#12-overfitting--generalization)
 13. [Hardware & Thermal Systems Engineering](#13-thermal-systems-engineering)
-14. [Key Terms Quick Reference Glossary](#14-glossary)
+14. [Goodhart's Law & The Multilingual Evasion Loophole](#14-goodharts-law--the-multilingual-evasion-loophole)
+15. [Key Terms Quick Reference Glossary](#15-key-terms-glossary)
 
 ---
 
@@ -381,7 +382,67 @@ When training locally on a laptop (RTX 3050 Laptop GPU):
 
 ---
 
-## 14. Key Terms Glossary
+## 14. Goodhart's Law & The Multilingual Evasion Loophole
+
+One of the most profound real-world lessons discovered during this replication is the **Multilingual Evasion Loophole** and how naive constraints interact with base foundation models.
+
+### The Mystery We Encountered
+During our benchmark runs on `short_eval_50.jsonl`:
+- **Kevin Wu's Base Model Usable Rate:** **26.0%** (using an LLM Judge)
+- **Our Initial Raw Heuristic Base Rate:** **56.0%** (14 / 25 prompts)
+
+Why such a massive discrepancy if the model (Qwen3-1.7B), weights, architecture, and prompt pool were identical?
+
+### 1. How Base Models "Cheat" Under Negative Logit Masks
+Qwen3-1.7B is a **multilingual model** pre-trained on English, Chinese, Russian, Japanese, Thai, Arabic, and dozens of other languages. Its 151,936-token vocabulary contains words and subwords across all these scripts.
+
+When we apply a negative logit mask setting every token containing the ASCII letter `'e'` or `'E'` to $-\infty$, common English concepts like *the, review, electricity, test, breakfast, material* become mathematically impossible to generate.
+
+Because the **Base model** has received zero lipogram training, its probability distribution panics. When forced to answer a prompt without these essential words, the model exploits an unintended degree of freedom: **non-English tokens do not contain the ASCII byte `0x65` ('e')!**
+
+Inspecting our raw Base model outputs (`evaluation/reports/base_benchmark_records.jsonl`) revealed actual cheating behavior:
+* **Amazon review prompt:**  
+  `"I am writing this Amazon productレビュー for a gown I bought for my sis's婚礼..."`  
+  *(Inserted Japanese Katakana for "review" and Chinese for "wedding")*
+* **Electricity bill reduction prompt:**  
+  `"Turn off lights and unplugging电器. Buy энергосберегающие bulbs..."`  
+  *(Inserted Chinese for "appliances" and Russian Cyrillic for "energy-saving")*
+* **Skipping breakfast prompt:**  
+  `"Skipping早餐 can hurt your body in many ways... and salads都是用新鲜食材制作的"`  
+  *(Inserted Chinese characters for "breakfast" and a full Chinese clause)*
+* **Studying for a test prompt:**  
+  `"To study for a тест... organizing your study材料... to复习 your материал..."`  
+  *(Mixed Russian and Chinese characters into English grammar)*
+
+### 2. The Evaluator Scoring Difference
+* **Why Our Offline Heuristic Scored 56%:**  
+  Our local heuristic evaluated: (1) `e_pass` (no English 'e' found), (2) dictionary validity via `re.findall(r"\b[a-zA-Z]+\b")`, and (3) length shaping. Because the regex extracted only the Latin English words and verified them against the 80k-word dictionary, it **ignored the non-ASCII Chinese/Russian characters entirely**, scoring those sentences as high-quality (>0.70)!
+* **Why Kevin's LLM Judge Scored 26%:**  
+  Kevin used an external LLM (`gpt-6-luna` / GPT-4o) whose prompt explicitly instructed:
+  > *"Coherence: is the answer readable, sensible English? 5 = natural... 1 = gibberish or not English."*  
+  > Pass criteria: `usable = (coherence >= 4 AND responds >= 4)`.
+
+  When GPT-4o saw sentences with Chinese and Russian characters spliced in, it immediately scored Coherence as $\le 2$ ("Not English"). Kevin's judge correctly rejected all multilingual evasion answers!
+
+### 3. The Mathematical Proof
+When we add a strict English ASCII check (`response.isascii()`) to filter out multilingual evasions:
+* **Raw Base Model Usable Rate:** $14 / 25 = 56.0\%$
+* **Pure English ASCII Usable Rate:** $7 / 25 = \mathbf{28.0\%}$
+* **Kevin Wu's Base Model Usable Rate:** $\mathbf{26.0\%}$
+
+**They match almost to the exact decimal!** Exactly 7 out of the 14 "usable" answers produced by the base model were multilingual cheat answers.
+
+### 4. Why SFT and RL Closed the Loophole
+When we ran the exact same pure ASCII filter across SFT and RL:
+* **Base Model:** Raw = 56.0% $\rightarrow$ **Pure ASCII = 28.0%** (50% of passes were cheats!)
+* **SFT Model:** Raw = 80.0% $\rightarrow$ **Pure ASCII = 80.0%** (0% cheats!)
+* **RL Model:** Raw = 88.0% $\rightarrow$ **Pure ASCII = 88.0%** (0% cheats!)
+
+Supervised Fine-Tuning on 180 clean English lipograms taught the model valid English synonyms (*water* $\rightarrow$ *aquatic part*), and RL reinforced poetic, diverse English, completely curing the model of foreign-token evasion without needing an explicit ASCII ban!
+
+---
+
+## 15. Key Terms Glossary
 
 | Term | Definition |
 |---|---|

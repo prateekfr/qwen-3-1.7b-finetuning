@@ -152,7 +152,7 @@ qwen-3-1.7b-finetuning/
 - [x] Interactive Chat CLI implemented (`scripts/chat_no_e.py`) with live token masking, stats, and dynamic `:mode rl`, `:mode sft`, `:mode base` switching.
 - [x] Phase 5: Comprehensive Benchmark Suite completed (`evaluation/benchmark_suite.py`):
   - Evaluated Base, SFT, and RL across 25 standardized benchmark prompts.
-  - Base: 88.0% e-pass, 56.0% usable, 0.6731 reward.
+  - Base: 88.0% e-pass, **28.0% usable (pure ASCII English)** (56.0% raw heuristic before foreign-token filtering), 0.6731 reward.
   - SFT: 96.0% e-pass, 80.0% usable, 0.8436 reward.
   - RL: **100.0% e-pass**, **88.0% usable**, **0.8895 reward**, 92.5% n-gram diversity.
   - Full reports generated in `evaluation/reports/`.
