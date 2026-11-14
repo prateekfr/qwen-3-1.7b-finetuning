@@ -1,0 +1,78 @@
+# Default Training Configuration — Qwen, Minus the E
+# All hyperparameters in one place for easy tuning.
+
+# === Model ===
+model:
+  name: "Qwen/Qwen3-1.7B"
+  quantization: "nf4"            # 4-bit NF4 via bitsandbytes
+  bnb_4bit_compute_dtype: "bfloat16"
+  bnb_4bit_use_double_quant: true
+  trust_remote_code: true
+
+# === LoRA ===
+lora:
+  rank: 16
+  alpha: 16
+  dropout: 0.0
+  target_modules:
+    - q_proj
+    - k_proj
+    - v_proj
+    - o_proj
+    - gate_proj
+    - up_proj
+    - down_proj
+  bias: "none"
+  task_type: "CAUSAL_LM"
+
+# === Forbidden Letter Mask ===
+mask:
+  forbidden_chars: ["e", "E"]
+  include_accented: true         # Also block é, è, ê, ë, É, È, Ê, Ë, etc.
+
+# === SFT Training ===
+sft:
+  epochs: 10
+  batch_size: 1
+  gradient_accumulation_steps: 4  # Effective batch = 4
+  learning_rate: 1.0e-4
+  weight_decay: 0.01
+  warmup_ratio: 0.1
+  max_seq_length: 512
+  gradient_checkpointing: true
+  save_best_only: true           # Save only the best checkpoint (by val loss)
+  eval_every_epoch: true
+  fp16: false
+  bf16: true
+
+# === RL / GRPO Training ===
+rl:
+  total_steps: 300
+  prompts_per_step: 4
+  answers_per_prompt: 4          # Reduced from Kevin's 8 for VRAM
+  learning_rate: 2.0e-5
+  kl_penalty: 0.02
+  temperature: 0.7
+  max_gen_length: 200            # Reduced from 300 for VRAM
+  gradient_accumulation_steps: 4
+  gradient_checkpointing: true
+
+# === Generation ===
+generation:
+  max_new_tokens: 200
+  temperature: 0.7
+  top_p: 0.9
+  do_sample: true
+
+# === Paths ===
+paths:
+  data_raw: "data/raw"
+  data_processed: "data/processed"
+  checkpoints: "checkpoints"
+  logs: "logs"
+
+# === Hardware ===
+hardware:
+  device: "cuda"
+  low_cpu_mem_usage: true
+  empty_cache_between_steps: true  # Call torch.cuda.empty_cache() between RL steps

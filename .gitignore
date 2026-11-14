@@ -1,0 +1,46 @@
+# Data
+data/raw/
+data/processed/
+
+# Checkpoints & Logs
+checkpoints/
+logs/
+
+# Python
+__pycache__/
+*.py[cod]
+*$py.class
+*.egg-info/
+*.egg
+dist/
+build/
+
+# Environment
+.env
+*.env
+.venv/
+venv/
+env/
+
+# IDE
+.vscode/
+.idea/
+*.swp
+*.swo
+
+# OS
+.DS_Store
+Thumbs.db
+desktop.ini
+
+# Jupyter
+.ipynb_checkpoints/
+
+# HuggingFace cache (don't commit model downloads)
+*.bin
+*.safetensors
+*.gguf
+
+# Logs
+*.log
+wandb/
