@@ -1,0 +1,41 @@
+{
+  "base": {
+    "model": "Base Qwen-1.7B + Mask",
+    "total_prompts": 25,
+    "elapsed_seconds": 259.33,
+    "e_pass_rate": 0.88,
+    "nonempty_rate": 1.0,
+    "usable_rate": 0.56,
+    "mean_reward_score": 0.6731,
+    "mean_tokens": 48.28,
+    "mean_word_count": 32.88,
+    "mean_lexicon_validity": 1.0,
+    "mean_ngram_diversity": 0.9154
+  },
+  "sft": {
+    "model": "SFT (180 rewrites) + Mask",
+    "total_prompts": 25,
+    "elapsed_seconds": 414.66,
+    "e_pass_rate": 0.96,
+    "nonempty_rate": 1.0,
+    "usable_rate": 0.8,
+    "mean_reward_score": 0.8436,
+    "mean_tokens": 54.0,
+    "mean_word_count": 42.04,
+    "mean_lexicon_validity": 1.0,
+    "mean_ngram_diversity": 0.9145
+  },
+  "rl": {
+    "model": "RL (GRPO Best) + Mask",
+    "total_prompts": 25,
+    "elapsed_seconds": 390.81,
+    "e_pass_rate": 1.0,
+    "nonempty_rate": 1.0,
+    "usable_rate": 0.88,
+    "mean_reward_score": 0.8895,
+    "mean_tokens": 53.32,
+    "mean_word_count": 43.0,
+    "mean_lexicon_validity": 1.0,
+    "mean_ngram_diversity": 0.9252
+  }
+}

@@ -140,13 +140,28 @@ qwen-3-1.7b-finetuning/
   - Trained 4 full epochs: Train loss dropped from 3.1071 -> 1.8191; Val loss reached optimum minimum of **2.5692** at Epoch 3
   - Verified early stopping logic saved the optimal Epoch 3 adapter weights to `checkpoints/sft_best/` (66.55 MB)
   - Confirmed generated text produces fluent, grammatical sentences with **0% 'e's** (`e_pass=True`, `e_count=0`) across diverse test prompts
+- [x] Dual-Engine Reward System implemented (`core/rewards.py`):
+  - Local Composite Heuristic: 80,549-word English dictionary, lipogram gate, length trapezoid, 2-gram/3-gram repetition entropy, prompt keyword overlap.
+  - Remote LLM-as-a-judge: OpenAI/OpenRouter compatible with auto-fallback to local.
+  - Toggleable via single line in `configs/default.yaml` (`reward.mode: "local"` or `"api"`) and `.env`.
+- [x] Phase 4: GRPO Reinforcement Learning completed on RTX 3050 GPU
+  - Dual-adapter PEFT architecture (`trainable` active policy + `reference` frozen SFT baseline on identical 4-bit weights, using only 66 MB extra VRAM).
+  - Trained all 30 steps in 25.2 minutes with peak VRAM at **3.44 GB** (zero OOMs).
+  - Group Mean Reward reached **0.9952** (Step 26 Best Saved).
+  - Saved optimal adapter to `checkpoints/rl_best/` and periodic checkpoints `checkpoints/rl_step_10`, `20`, `30`.
+- [x] Interactive Chat CLI implemented (`scripts/chat_no_e.py`) with live token masking, stats, and dynamic `:mode rl`, `:mode sft`, `:mode base` switching.
+- [x] Phase 5: Comprehensive Benchmark Suite completed (`evaluation/benchmark_suite.py`):
+  - Evaluated Base, SFT, and RL across 25 standardized benchmark prompts.
+  - Base: 88.0% e-pass, 56.0% usable, 0.6731 reward.
+  - SFT: 96.0% e-pass, 80.0% usable, 0.8436 reward.
+  - RL: **100.0% e-pass**, **88.0% usable**, **0.8895 reward**, 92.5% n-gram diversity.
+  - Full reports generated in `evaluation/reports/`.
+- [x] Professional GitHub-ready [`README.md`](file:///D:/Projects/qwen-3-1.7b-finetuning/README.md) written.
+- [x] Educational textbook [`docs/LEARNING_GUIDE.md`](file:///D:/Projects/qwen-3-1.7b-finetuning/docs/LEARNING_GUIDE.md) created.
 
-### 🔄 In Progress
-- [ ] Phase 4: Reinforcement Learning (GRPO)
-
-### ⏳ Not Started
-- [ ] Phase 5: Evaluation & Publishing
-- [ ] Phase 6: Stretch Goals
+### ⏳ Future Horizons / Stretch Goals
+- [ ] Phase 6: Multi-turn conversational lipograms
+- [ ] Push adapters to Hugging Face Model Hub (when user provides HuggingFace token)
 
 ---
 
