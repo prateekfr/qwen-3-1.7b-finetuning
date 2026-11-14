@@ -1,6 +1,8 @@
 # Qwen, Minus the E: Constrained Language Modeling and Lipogram Post-Training
 
 [![PyTorch](https://img.shields.io/badge/PyTorch-2.6.0%2Bcu124-EE4C2C.svg?style=flat&logo=pytorch)](https://pytorch.org/)
+[![Hugging Face Model](https://img.shields.io/badge/HuggingFace-prateekfr%2Fqwen3--1.7b--no--e-yellow.svg)](https://huggingface.co/prateekfr/qwen3-1.7b-no-e)
+[![Hugging Face Adapter](https://img.shields.io/badge/HuggingFace-prateekfr%2Fqwen3--1.7b--no--e--lora-orange.svg)](https://huggingface.co/prateekfr/qwen3-1.7b-no-e-lora)
 [![PEFT / QLoRA](https://img.shields.io/badge/PEFT-QLoRA%204--bit%20NF4-yellow.svg)](https://github.com/huggingface/peft)
 [![VRAM](https://img.shields.io/badge/VRAM%20Cap-4.0%20GB%20(RTX%203050)-green.svg)](https://nvidia.com)
 [![License](https://img.shields.io/badge/License-Apache%202.0-blue.svg)](LICENSE)
@@ -16,7 +18,7 @@ This repository provides an end-to-end post-training pipeline for fine-tuning **
 3. [Dual-Engine Reward Framework](#dual-engine-reward-framework)
 4. [Benchmark Evaluation](#benchmark-evaluation)
 5. [Inference and Interactive CLI](#inference-and-interactive-cli)
-6. [Standalone Export: Hugging Face and Ollama / GGUF](#standalone-export-hugging-face-and-ollama--gguf)
+6. [Hugging Face Model Hub and Ollama Deployment](#hugging-face-model-hub-and-ollama-deployment)
 7. [Repository Structure](#repository-structure)
 8. [Citation and Attribution](#citation-and-attribution)
 
@@ -150,35 +152,75 @@ python evaluation/benchmark_suite.py --limit 25
 
 ---
 
-## Standalone Export: Hugging Face and Ollama / GGUF
+## Hugging Face Model Hub and Ollama Deployment
 
-### 1. Merging LoRA Adapter to Standalone FP16 Weights
-To deploy without PEFT dependencies or export to GGUF, merge the RL LoRA adapter into the base weights:
-```bash
-python scripts/merge_adapter.py --base weights/qwen3-1.7b --adapter checkpoints/rl_best --output weights/qwen3-1.7b-no-e-merged
+The post-trained models and GGUF binaries are publicly hosted on the Hugging Face Hub:
+- **Standalone FP16 Model & GGUF Binary:** [prateekfr/qwen3-1.7b-no-e](https://huggingface.co/prateekfr/qwen3-1.7b-no-e)
+- **PEFT LoRA Adapter:** [prateekfr/qwen3-1.7b-no-e-lora](https://huggingface.co/prateekfr/qwen3-1.7b-no-e-lora)
+
+### 1. Direct Inference via Hugging Face Transformers
+To generate strict lipograms with the standalone merged model without PEFT dependencies:
+```python
+import torch
+from transformers import AutoModelForCausalLM, AutoTokenizer
+
+model_id = "prateekfr/qwen3-1.7b-no-e"
+tokenizer = AutoTokenizer.from_pretrained(model_id)
+model = AutoModelForCausalLM.from_pretrained(
+    model_id,
+    torch_dtype=torch.float16,
+    device_map="auto"
+)
+model.eval()
+
+# Construct decoding-time mask blocking all tokens containing 'e' or 'E'
+vocab_size = model.config.vocab_size
+forbidden_mask = torch.zeros(vocab_size, dtype=torch.bool)
+for token_id in range(vocab_size):
+    token_str = tokenizer.decode([token_id])
+    if "e" in token_str.lower():
+        forbidden_mask[token_id] = True
+
+# Generate response
+prompt = "Explain why the sky is blue."
+inputs = tokenizer(f"<|im_start|>user\n{prompt}<|im_end|>\n<|im_start|>assistant\n", return_tensors="pt").to("cuda")
+
+with torch.no_grad():
+    curr_ids = inputs["input_ids"]
+    for _ in range(60):
+        outputs = model(input_ids=curr_ids)
+        scores = outputs.logits[:, -1, :].clone().float()
+        scores[:, forbidden_mask.to("cuda")] = -float("inf")
+        next_token = torch.multinomial((scores / 0.7).softmax(-1), num_samples=1)
+        if next_token.item() == tokenizer.eos_token_id:
+            break
+        curr_ids = torch.cat([curr_ids, next_token], dim=-1)
+
+print(tokenizer.decode(curr_ids[0][inputs["input_ids"].shape[1]:], skip_special_tokens=True).strip())
 ```
 
-### 2. Exporting to GGUF
-Convert the standalone model into GGUF format:
+### 2. Local Deployment via Ollama (Pre-Converted GGUF)
+To run the model locally in Ollama using the pre-converted FP16 GGUF binary:
 ```bash
-python scripts/convert_hf_to_gguf.py weights/qwen3-1.7b-no-e-merged --outfile weights/qwen3-1.7b-no-e-f16.gguf --outtype f16
-```
+# 1. Download the GGUF binary from Hugging Face into weights/
+huggingface-cli download prateekfr/qwen3-1.7b-no-e qwen3-1.7b-no-e-f16.gguf --local-dir weights
 
-### 3. Local Deployment via Ollama
-Import the generated GGUF file into Ollama using the provided `Modelfile`:
-```bash
+# 2. Register and start the Ollama model using the project Modelfile
 ollama create qwen3-no-e -f Modelfile
 ollama run qwen3-no-e
 ```
 
-### 4. Publishing to the Hugging Face Hub
-Upload fine-tuned adapters or standalone merged models with automated Model Cards:
+### 3. Local Model Export & Conversion Pipeline
+To replicate the merging, GGUF conversion, or Hub publishing pipelines from local checkpoints:
 ```bash
-# Upload LoRA adapter
-python scripts/publish_to_hf.py --repo-id <username>/qwen3-1.7b-no-e-lora --model-path checkpoints/rl_best
+# Merge LoRA adapter into base weights (produces standalone FP16 model)
+python scripts/merge_adapter.py --base weights/qwen3-1.7b --adapter checkpoints/rl_best --output weights/qwen3-1.7b-no-e-merged
 
-# Upload standalone merged weights
-python scripts/publish_to_hf.py --repo-id <username>/qwen3-1.7b-no-e --model-path weights/qwen3-1.7b-no-e-merged
+# Convert standalone model to GGUF format
+python scripts/convert_hf_to_gguf.py weights/qwen3-1.7b-no-e-merged --outfile weights/qwen3-1.7b-no-e-f16.gguf --outtype f16
+
+# Publish to Hugging Face Hub (reads HF_TOKEN from .env or CLI)
+python scripts/publish_to_hf.py --repo-id prateekfr/qwen3-1.7b-no-e --model-path weights/qwen3-1.7b-no-e-merged --gguf-file weights/qwen3-1.7b-no-e-f16.gguf
 ```
 
 ---
