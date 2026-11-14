@@ -16,8 +16,9 @@ This repository provides an end-to-end post-training pipeline for fine-tuning **
 3. [Dual-Engine Reward Framework](#dual-engine-reward-framework)
 4. [Benchmark Evaluation](#benchmark-evaluation)
 5. [Inference and Interactive CLI](#inference-and-interactive-cli)
-6. [Repository Structure](#repository-structure)
-7. [Citation and Attribution](#citation-and-attribution)
+6. [Standalone Export: Hugging Face and Ollama / GGUF](#standalone-export-hugging-face-and-ollama--gguf)
+7. [Repository Structure](#repository-structure)
+8. [Citation and Attribution](#citation-and-attribution)
 
 ---
 
@@ -149,6 +150,39 @@ python evaluation/benchmark_suite.py --limit 25
 
 ---
 
+## Standalone Export: Hugging Face and Ollama / GGUF
+
+### 1. Merging LoRA Adapter to Standalone FP16 Weights
+To deploy without PEFT dependencies or export to GGUF, merge the RL LoRA adapter into the base weights:
+```bash
+python scripts/merge_adapter.py --base weights/qwen3-1.7b --adapter checkpoints/rl_best --output weights/qwen3-1.7b-no-e-merged
+```
+
+### 2. Exporting to GGUF
+Convert the standalone model into GGUF format:
+```bash
+python scripts/convert_hf_to_gguf.py weights/qwen3-1.7b-no-e-merged --outfile weights/qwen3-1.7b-no-e-f16.gguf --outtype f16
+```
+
+### 3. Local Deployment via Ollama
+Import the generated GGUF file into Ollama using the provided `Modelfile`:
+```bash
+ollama create qwen3-no-e -f Modelfile
+ollama run qwen3-no-e
+```
+
+### 4. Publishing to the Hugging Face Hub
+Upload fine-tuned adapters or standalone merged models with automated Model Cards:
+```bash
+# Upload LoRA adapter
+python scripts/publish_to_hf.py --repo-id <username>/qwen3-1.7b-no-e-lora --model-path checkpoints/rl_best
+
+# Upload standalone merged weights
+python scripts/publish_to_hf.py --repo-id <username>/qwen3-1.7b-no-e --model-path weights/qwen3-1.7b-no-e-merged
+```
+
+---
+
 ## Repository Structure
 
 ```
@@ -179,6 +213,9 @@ qwen-3-1.7b-finetuning/
 │   └── reports/                   # Output metrics and comparison reports
 ├── scripts/
 │   ├── chat_no_e.py               # Interactive CLI chat interface
+│   ├── convert_hf_to_gguf.py      # GGUF converter supporting Qwen3
+│   ├── merge_adapter.py           # LoRA weight merging utility
+│   ├── publish_to_hf.py           # Hugging Face Hub uploader with Model Card generator
 │   ├── test_trained_rl.py         # Comparative generation inspection script
 │   ├── test_trained_sft.py        # SFT verification script
 │   └── verify_env.py              # Environment diagnostic tool
@@ -187,6 +224,7 @@ qwen-3-1.7b-finetuning/
 │   └── train_grpo_4bit.py         # 4-bit Dual-Adapter GRPO implementation
 ├── weights/
 │   └── qwen3-1.7b/                # Base model weights and tokenizer
+├── Modelfile                      # Ollama model definition
 ├── .env.example                   # Environment configuration template
 └── README.md                      # Project documentation
 ```

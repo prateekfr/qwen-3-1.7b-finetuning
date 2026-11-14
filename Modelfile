@@ -1,0 +1,25 @@
+# ==============================================================================
+# Ollama Modelfile — Qwen3-1.7B Lipogram Model (Minus the 'E')
+# ==============================================================================
+# Base Model : Qwen/Qwen3-1.7B
+# Post-Train : QLoRA SFT + GRPO Reinforcement Learning
+# Format     : GGUF (FP16)
+# ==============================================================================
+
+FROM ./weights/qwen3-1.7b-no-e-f16.gguf
+
+TEMPLATE """<|im_start|>system
+{{ .System }}<|im_end|>
+<|im_start|>user
+{{ .Prompt }}<|im_end|>
+<|im_start|>assistant
+{{ .Response }}<|im_end|>"""
+
+SYSTEM """Answer in natural English without the letters 'e' or 'E'. Preserve correct spelling and answer the user's request. This restriction applies only to your final answer, not your thinking."""
+
+PARAMETER temperature 0.7
+PARAMETER top_p 0.95
+PARAMETER top_k 40
+PARAMETER stop "<|im_start|>"
+PARAMETER stop "<|im_end|>"
+PARAMETER stop "<|endoftext|>"
