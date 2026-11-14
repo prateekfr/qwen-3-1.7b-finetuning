@@ -131,12 +131,12 @@ qwen-3-1.7b-finetuning/
 - [x] Assessed hardware feasibility
 - [x] Created project folder structure
 - [x] Created all documentation scaffolding
+- [x] Phase 0: Environment setup (`qwen-no-e` Conda env, PyTorch cu124, bitsandbytes, transformers, peft)
 
 ### 🔄 In Progress
-- [ ] Phase 0: Environment setup (conda env, dependencies, GPU verification)
+- [ ] Phase 1: Data pipeline (fetch datasets, curate 180 e-free examples)
 
 ### ⏳ Not Started
-- [ ] Phase 1: Data pipeline (fetch datasets, curate 180 e-free examples)
 - [ ] Phase 2: Token mask implementation
 - [ ] Phase 3: SFT training
 - [ ] Phase 4: RL / GRPO training

@@ -7,14 +7,14 @@
 
 ---
 
-## Phase 0: Environment Setup ⬅️ CURRENT
-**Status:** 🔄 In Progress
+## Phase 0: Environment Setup
+**Status:** ✅ Completed
 **Target:** Day 1
 
-- [ ] Create conda environment (`qwen-no-e`, Python 3.11)
-- [ ] Install PyTorch with CUDA 12.x
-- [ ] Install core dependencies (transformers, peft, bitsandbytes, accelerate, datasets)
-- [ ] Run `scripts/verify_env.py` to confirm GPU, CUDA, and all packages
+- [x] Create conda environment (`qwen-no-e`, Python 3.11)
+- [x] Install PyTorch with CUDA 12.x
+- [x] Install core dependencies (transformers, peft, bitsandbytes, accelerate, datasets)
+- [x] Run `scripts/verify_env.py` to confirm GPU, CUDA, and all packages
 - [ ] Test loading Qwen3-1.7B in 4-bit mode (fits in 4 GB?)
 - [ ] Measure actual VRAM usage of quantized model
 
@@ -22,8 +22,8 @@
 
 ---
 
-## Phase 1: Data Pipeline
-**Status:** ⏳ Not Started
+## Phase 1: Data Pipeline ⬅️ CURRENT
+**Status:** 🔄 In Progress
 **Target:** Day 1-2
 
 - [ ] Implement `data/prompts/make_prompt_data.py`
@@ -120,8 +120,8 @@ Target: >50% usable response rate.
 
 | Phase | Description             | Days  | Status         |
 | ----- | ----------------------- | ----- | -------------- |
-| 0     | Environment Setup       | Day 1 | 🔄 In Progress |
-| 1     | Data Pipeline           | Day 1-2 | ⏳ Not Started |
+| 0     | Environment Setup       | Day 1 | ✅ Completed   |
+| 1     | Data Pipeline           | Day 1-2 | 🔄 In Progress |
 | 2     | Token Mask              | Day 2   | ⏳ Not Started |
 | 3     | SFT Training            | Day 2-3 | ⏳ Not Started |
 | 4     | RL / GRPO Training      | Day 3-5 | ⏳ Not Started |
